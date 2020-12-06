@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>后台管理系统</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" th:href="@{/static/layuiadmin/layui/css/layui.css}" media="all">
+    <link rel="stylesheet" th:href="@{/static/layuiadmin/style/admin.css}" media="all">
+    <script>
+        /^http(s*):\/\//.test(location.href) || alert('请先部署到 localhost 下再访问');
+    </script>
+</head>
+<body>
+
+<div class="layui-fluid layui-anim" lay-title="用户管理">
+    <div class="layui-row">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <hr class="layui-bg-green">
+                    <table id="user" class="layui-table" lay-filter="user"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/static/Jquery/jquery-3.4.1.js}"></script>
+<script th:src="@{/static/layuiadmin/layui/layui.js}"></script>
+<script data-th-inline="none" type="text/javascript">
+
+    layui.use(['table','jquery'],function () {
+        var table = layui.table;
+
+        table.render({
+            elem: '#user',
+            method:'POST',
+            async: false,
+            dataType:'JSON',
+            url: 'http://localhost:8080/admin/user',
+            id: 'userReload',
+            page: true,
+            limits:[10,20,50],
+            // 从封装的数据结构里拿到结果
+            parseData:function(result) {
+                return {
+                    "code": result.status,
+                    "count": result.data.count,
+                    "data":result.data.data
+                }
+            },
+            cols: [[
+                {field: 'id', title: '用户ID', width: "10%"},
+                {field: 'username', title: '用户名', width: "20%"},
+                {field: 'password', title: '密码', width: "30%"},
+                {field: 'createTime', title: '创建时间', templet: '<div>{{layui.util.toDateString(d.createTime, "yyyy-MM-dd HH:mm:ss") }}</div>', width: "20%", sort: true},
+                {field: 'updateTime', title: '更新时间', templet: '<div>{{layui.util.toDateString(d.updateTime, "yyyy-MM-dd HH:mm:ss") }}</div>', width: "20%", sort: true},
+            ]],
+        });
+    });
+</script>
+</body>
+</html>

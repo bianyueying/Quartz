@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>后台管理系统</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" th:href="@{/static/layuiadmin/layui/css/layui.css}" media="all">
+    <link rel="stylesheet" th:href="@{/static/layuiadmin/style/admin.css}" media="all">
+    <script>
+        /^http(s*):\/\//.test(location.href) || alert('请先部署到 localhost 下再访问');
+    </script>
+</head>
+<body>
+
+<div class="layui-fluid layui-anim" lay-title="定时管理">
+    <div class="layui-row">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <hr class="layui-bg-green">
+                    <table id="quartz" class="layui-table" lay-filter="quartz"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="layui-fluid" id="quartz-update" style="display: none">
+    <form class="layui-form" action="" lay-filter="quartz-update-form" id="quartz-update-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">Trigger名：</label>
+            <div class="layui-input-block">
+                <input id="triggerName" name="triggerName" autocomplete="off" class="layui-input" readonly>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Trigger组：</label>
+            <div class="layui-input-block">
+                <input id="triggerGroup" name="triggerGroup" autocomplete="off" class="layui-input" readonly>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Cron表式：</label>
+            <div class="layui-input-block">
+                <input id="cron" name="cron" autocomplete="off" class="layui-input" required>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="layui-fluid" id="quartz-add" style="display: none">
+    <form class="layui-form" action="" lay-filter="quartz-add-form" id="quartz-add-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">Job名：</label>
+            <div class="layui-input-block">
+                <input id="add_JobName" name="add_JobName" autocomplete="off" class="layui-input" required>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Job执行类：</label>
+            <div class="layui-input-block">
+                <input id="add_JobClass" name="add_JobClass" autocomplete="off" class="layui-input" required>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Job描述：</label>
+            <div class="layui-input-block">
+                <input id="add_description" name="add_description" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Trigger名：</label>
+            <div class="layui-input-block">
+                <input id="add_triggerName" name="add_triggerName" autocomplete="off" class="layui-input" required>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Cron表式：</label>
+            <div class="layui-input-block">
+                <input id="add_cron" name="add_cron" autocomplete="off" class="layui-input" required>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="startJob">启动Job</button>
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="addJob">添加Job</button>
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="resumeAll">恢复所有任务</button>
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="pauseAll">暂停所有任务</button>
+    </div>
+</script>
+
+<script type="text/html" id="barDemo">
+    <a class="layui-btn layui-btn-normal layui-btn-xs" lay-event="pause">暂停</a>
+    <a class="layui-btn layui-btn-xs" lay-event="update">修改</a>
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="resume">启动</a>
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="delete">删除</a>
+</script>
+
+<script th:src="@{/static/Jquery/jquery-3.4.1.js}"></script>
+<script th:src="@{/static/layuiadmin/layui/layui.js}"></script>
+<script data-th-inline="none" type="text/javascript">
+
+    layui.use(['table','form','jquery'],function () {
+        var layer = layui.layer;
+        var table = layui.table;
+        var form = layui.form;
+        form.render();
+
+        table.render({
+            elem: '#quartz',
+            method:'POST',
+            dataType:'JSON',
+            url: 'http://localhost:8080/quartz/list',
+            id: 'quartzReload',
+            page: true,
+            toolbar: '#toolbarDemo',
+            defaultToolbar: [],
+            limits:[10,20,50],
+            // 从封装的数据结构里拿到结果
+            parseData:function(result) {
+                return {
+                    "code": result.data.status,
+                    "count": result.data.count,
+                    "data":result.data.data
+                }
+            },
+            cols: [[
+                {field: 'jobName', title: 'Job名', width: "6%"},
+                {field: 'jobGroup', title: 'Job组', width: "7%"},
+                {field: 'jobClassName', title: 'Job全类名', width: "14%"},
+                {field: 'description', title: 'Job描述', width: "10%"},
+                {field: 'triggerName', title: 'Trigger名', width: "8%"},
+                {field: 'triggerGroup', title: 'Trigger组', width: "8%"},
+                {field: 'triggerState', title: '状态', width: "8%"},
+                {field: 'cronExpression', title: 'CRON表达式', width: "12%"},
+                {field: 'timeZone', title: '时区', width: "10%"},
+                {fixed: 'right', title:'操作',align: 'center', toolbar: '#barDemo', width: '17%'}
+            ]],
+        });
+
+        table.on('toolbar(quartz)', function(obj){
+            if(obj.event === 'pauseAll'){
+                layer.confirm('<div style="text-align: center;">确定暂停所有任务?</div>',{title: '确认暂停框',btn: ['暂停','取消']}, function (index) {
+                    $.ajax({
+                        url: "http://localhost:8080/quartz/pauseAll",
+                        type: 'POST',
+                        dataType: "json",
+                        success: function (result) {
+                            if (result.status === 200) {
+                                // 刷新任务状态
+                                table.reload('quartzReload', {
+                                    page: {
+                                        curr: 1
+                                    }
+                                });
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 6});
+                            } else {
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 5})
+                            }
+                        },
+                        error: function () {
+                            layer.close(index);
+                            layer.msg("未知错误,请稍后再试！",{icon: 5})
+                        }
+                    })
+                })
+            }
+            if(obj.event === 'resumeAll'){
+                layer.confirm('<div style="text-align: center;">是否恢复所有任务?</div>',{title: '确认恢复框',btn: ['恢复','取消']}, function (index) {
+                    $.ajax({
+                        url: "http://localhost:8080/quartz/resumeAll",
+                        type: 'POST',
+                        dataType: "json",
+                        success: function (result) {
+                            if (result.status === 200) {
+                                table.reload('quartzReload', {
+                                    page: {
+                                        curr: 1
+                                    }
+                                });
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 6});
+                            } else {
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 5})
+                            }
+                        },
+                        error: function () {
+                            layer.close(index);
+                            layer.msg("未知错误,请稍后再试！",{icon: 5})
+                        }
+                    })
+                })
+            }
+            if (obj.event === 'startJob') {
+                $.ajax({
+                    url: "http://localhost:8080/quartz/start",
+                    type: 'POST',
+                    dataType: "json",
+                    success: function (result) {
+                        if (result.status === 200) {
+                            table.reload('quartzReload', {
+                                page: {
+                                    curr: 1
+                                }
+                            });
+                            layer.close(index);
+                            layer.msg(result.msg,{icon: 6});
+                        } else {
+                            layer.close(index);
+                            layer.msg(result.msg,{icon: 5})
+                        }
+                    },
+                    error: function () {
+                        layer.close(index);
+                        layer.msg("未知错误,请稍后再试！",{icon: 5})
+                    }
+                })
+            }
+            if (obj.event === 'addJob') {
+                layer.open({
+                    type: 1,
+                    resize: true,
+                    btn: ['添加', '取消'],
+                    area: ['520px', '400px'],
+                    content: $('#quartz-add'),
+                    title: '添加定时任务',
+                    btn1:function (index) {
+                        $.ajax({
+                            url: "http://localhost:8080/quartz/add",
+                            type: 'POST',
+                            data: {
+                                add_JobName: $('#add_JobName').val(),
+                                add_JobClass: $('#add_JobClass').val(),
+                                add_description: $('#add_description').val(),
+                                add_triggerName: $('#add_triggerName').val(),
+                                add_cron: $('#add_cron').val(),
+                            },
+                            dataType: "json",
+                            success: function (result) {
+                                if (result.status === 200) {
+                                    table.reload('quartzReload', {
+                                        page: {
+                                            curr: 1
+                                        }
+                                    });
+                                    layer.close(index);
+                                    layer.msg(result.msg,{icon: 6});
+                                } else {
+                                    layer.close(index);
+                                    layer.msg(result.msg,{icon: 5})
+                                }
+                            },
+                            error: function () {
+                                layer.close(index);
+                                layer.msg("未知错误,请稍后再试！",{icon: 5})
+                            }
+                        });
+                        return false;
+                    }
+                })
+            }
+        });
+
+        // 监听行工具事件
+        table.on('tool(quartz)', function(obj){
+            var data = obj.data;
+            // console.log(data);
+            var jobName = data.jobName;
+            var jobGroup = data.jobGroup;
+
+            if(obj.event === 'pause'){
+                layer.confirm('<div style="text-align: center;">确认暂停该任务?</div>',{title: '确认暂停框',btn: ['暂停','取消']}, function (index) {
+                    $.ajax({
+                        url: "http://localhost:8080/quartz/pause",
+                        type: 'POST',
+                        data: {name: jobName, group: jobGroup},
+                        dataType: "json",
+                        success: function (result) {
+                            if (result.status === 200) {
+                                table.reload('quartzReload', {
+                                    page: {
+                                        curr: 1
+                                    }
+                                });
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 6});
+                            } else {
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 5})
+                            }
+                        },
+                        error: function () {
+                            layer.close(index);
+                            layer.msg("未知错误,请稍后再试！",{icon: 5})
+                        }
+                    })
+                })
+            }
+            if(obj.event === 'update'){
+                console.log("点击了更新按钮");
+                layer.open({
+                    type: 1,
+                    resize: true,
+                    btn: ['更新', '取消'],
+                    area: ['450px', '300px'],
+                    content: $('#quartz-update'),
+                    title: 'Job信息修改',
+                    success: function () {
+                        form.val("quartz-update-form", {
+                            "triggerName": data.triggerName,
+                            "triggerGroup": data.triggerGroup,
+                            "cron": data.cronExpression,
+                        })
+                    },
+                    btn1:function (index) {
+                        $.ajax({
+                            url: "http://localhost:8080/quartz/update",
+                            type: 'POST',
+                            data: {
+                                triggerName: $('#triggerName').val(),
+                                triggerGroup: $('#triggerGroup').val(),
+                                cronExpression: $('#cron').val(),
+                            },
+                            dataType: "json",
+                            success: function (result) {
+                                if (result.status === 200) {
+                                    table.reload('quartzReload', {
+                                        page: {
+                                            curr: 1
+                                        }
+                                    });
+                                    layer.close(index);
+                                    layer.msg(result.msg,{icon: 6});
+                                } else {
+                                    layer.close(index);
+                                    layer.msg(result.msg,{icon: 5})
+                                }
+                            },
+                            error: function () {
+                                layer.close(index);
+                                layer.msg("未知错误,请稍后再试！",{icon: 5})
+                            }
+                        });
+                        return false;
+                    }
+                })
+            }
+            if(obj.event === 'resume'){
+                layer.confirm('<div style="text-align: center;">确认恢复该任务?</div>',{title: '确认恢复框',btn: ['恢复','取消']}, function (index) {
+                    $.ajax({
+                        url: "http://localhost:8080/quartz/resume",
+                        type: 'POST',
+                        data: {name: jobName, group: jobGroup},
+                        dataType: "json",
+                        success: function (result) {
+                            if (result.status === 200) {
+                                table.reload('quartzReload', {
+                                    page: {
+                                        curr: 1
+                                    }
+                                });
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 6});
+                            } else {
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 5})
+                            }
+                        },
+                        error: function () {
+                            layer.close(index);
+                            layer.msg("未知错误,请稍后再试！",{icon: 5})
+                        }
+                    })
+                });
+            }
+            if(obj.event === 'delete'){
+                // 删除任务之后要在前端页面也删除
+                layer.confirm('<div style="text-align: center;">确认删除该任务?</div>',{title: '确认删除框',btn: ['删除','取消']}, function (index) {
+                    $.ajax({
+                        url: "http://localhost:8080/quartz/delete",
+                        type: 'POST',
+                        data: {name: jobName, group: jobGroup},
+                        dataType: "json",
+                        success: function (result) {
+                            if (result.status === 200) {
+                                // 前端删除数据
+                                obj.del();
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 6});
+                            } else {
+                                layer.close(index);
+                                layer.msg(result.msg,{icon: 5})
+                            }
+                        },
+                        error: function () {
+                            layer.close(index);
+                            layer.msg("未知错误,请稍后再试！",{icon: 5})
+                        }
+                    })
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>

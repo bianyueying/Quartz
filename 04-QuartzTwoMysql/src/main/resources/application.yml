@@ -1,0 +1,65 @@
+
+
+# mybatis-plus
+mybatis-plus:
+  # SQL语句输出在控制台
+    configuration:
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 映射文件相关
+    mapper-locations: classpath*:bml/business/mapper/xml/*.xml
+    type-aliases-package: bml.business.mapper
+
+spring:
+  datasource:
+    # 业务数据源
+    db1:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://127.0.0.1:3306/bml_base?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false
+      username: root
+      password: 123456
+      type: com.alibaba.druid.pool.DruidDataSource
+    # Quartz数据源
+    db2:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://127.0.0.1:3306/bml_quartz?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&useSSL=false
+      username: root
+      password: 123456
+      type: com.alibaba.druid.pool.DruidDataSource
+
+  quartz:
+    properties:
+      org:
+        quartz:
+          scheduler:
+            # 默认
+            instanceName: DemoScheduler
+            # 如果使用集群，instanceId必须唯一，设置成AUTO
+            instanceId: AUTO
+          jobStore:
+            # 存储方式使用JobStoreTX 也就是数据库
+            class: org.quartz.impl.jdbcjobstore.JobStoreTX
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+            # 表名前缀
+            tablePrefix: QRTZ_
+            # 是否使用集群
+            isClustered: true
+            clusterCheckinInterval: 10000
+            useProperties: false
+            misfireThreshold: 5000
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 20
+            threadPriority: 5
+            threadsInheritContextClassLoaderOfInitializingThread: true
+    job-store-type: jdbc
+    jdbc:
+      # 启动项目时是否初始化表
+      initialize-schema: never
+
+  mvc:
+    # 静态资源文件
+    static-path-pattern: /static/**
+
+  thymeleaf:
+    # 禁用缓存
+    cache: false
